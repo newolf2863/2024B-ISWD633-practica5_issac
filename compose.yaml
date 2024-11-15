@@ -1,54 +1,97 @@
+# version: '3.8'
+
+# services:
+#   mysql-service:
+#     image: mysql:8.4
+#     container_name: mysql-container
+#     environment:
+#       MYSQL_ROOT_PASSWORD: root
+#       MYSQL_DATABASE: wordpress
+#       MYSQL_USER: wordpress
+#       MYSQL_PASSWORD: wordpress
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+#     networks:
+#       - net-wp
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       interval: 20s
+#       timeout: 20s
+#       retries: 10
+#       start_period: 30s
+
+#   wordpress-service:
+#     image: wordpress:6
+#     container_name: wordpress-container
+#     ports:
+#       - 8080:80
+#     environment:
+#       WORDPRESS_DB_HOST: mysql-service
+#       WORDPRESS_DB_USER: wordpress
+#       WORDPRESS_DB_PASSWORD: wordpress
+#       WORDPRESS_DB_NAME: wordpress
+#     volumes:
+#       - wordpress-vol:/var/www/html
+#     networks:
+#       - net-wp
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost"]
+#       interval: 20s
+#       timeout: 20s
+#       retries: 10
+#       start_period: 50s
+#     restart: always
+#     depends_on:
+#       mysql-service:
+#         condition: service_healthy
+
+# volumes:
+#   mysql-data:
+#   wordpress-vol:
+
+# networks:
+#   net-wp:
+#     driver: bridge
 version: '3.8'
 
 services:
-  mysql-service:
-    image: mysql:8.4
-    container_name: mysql-container
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: wordpress
-    volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - net-wp
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 20s
-      timeout: 20s
-      retries: 10
-      start_period: 30s
-
-  wordpress-service:
-    image: wordpress:6
-    container_name: wordpress-container
+  sonarqube:
+    image: sonarqube:latest
     ports:
-      - 8080:80
-    environment:
-      WORDPRESS_DB_HOST: mysql-service
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress
-      WORDPRESS_DB_NAME: wordpress
-    volumes:
-      - wordpress-vol:/var/www/html
+      - "9000:9000"
     networks:
-      - net-wp
+      - sonarnet
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
-      interval: 20s
-      timeout: 20s
-      retries: 10
-      start_period: 50s
-    restart: always
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     depends_on:
-      mysql-service:
-        condition: service_healthy
+      - postgresql
+
+  postgresql:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: sonarqube
+      POSTGRES_PASSWORD: sonarqube
+    networks:
+      - sonarnet
+    volumes:
+      - postgresql_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
 volumes:
-  mysql-data:
-  wordpress-vol:
+  sonarqube_data:
+  postgresql_data:
 
 networks:
-  net-wp:
+  sonarnet:
     driver: bridge
